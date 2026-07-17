@@ -3,14 +3,18 @@ package com.VyntraUserService.UserService.config;
 import com.VyntraUserService.UserService.model.*;
 import com.VyntraUserService.UserService.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
 
 @Configuration
+@Profile("local-seed")
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
@@ -19,6 +23,11 @@ public class DataInitializer implements CommandLineRunner {
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final StoreMemberRepository storeMemberRepository;
+
+    @Value("${vyntra.seed.admin-password}")
+    private String adminPassword;
+
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
     @Transactional
@@ -42,10 +51,10 @@ public class DataInitializer implements CommandLineRunner {
         mapRoleToPermissions(managerRole, Arrays.asList(viewProducts, createProduct));
         mapRoleToPermissions(cashierRole, Arrays.asList(viewProducts));
 
-        // 4. Create Default User
+        // 4. Create Default User (password always stored as BCrypt)
         User admin = User.builder()
                 .username("admin")
-                .password("admin123") // Should be encoded in a real app
+                .password(encodePassword(adminPassword))
                 .fullName("System Administrator")
                 .status(1)
                 .isLocked(false)
@@ -89,5 +98,15 @@ public class DataInitializer implements CommandLineRunner {
                     .build();
             rolePermissionRepository.save(rp);
         }
+    }
+
+    private String encodePassword(String rawOrAlreadyHashed) {
+        if (rawOrAlreadyHashed != null
+                && (rawOrAlreadyHashed.startsWith("$2a$")
+                || rawOrAlreadyHashed.startsWith("$2b$")
+                || rawOrAlreadyHashed.startsWith("$2y$"))) {
+            return rawOrAlreadyHashed;
+        }
+        return passwordEncoder.encode(rawOrAlreadyHashed == null ? "" : rawOrAlreadyHashed);
     }
 }
