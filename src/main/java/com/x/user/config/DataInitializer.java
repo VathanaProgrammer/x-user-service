@@ -18,9 +18,9 @@ import java.util.List;
 
 /**
  * Local-only seed for a default admin user, roles, and permissions.
- * Active only with Spring profile {@code local-seed} (used by local K3s).
+ * Active only with Spring profile {@code local-seed} (used by local).
  *
- * <p>Default login (override password with {@code VYNTRA_SEED_ADMIN_PASSWORD}):
+ * <p>Default login (override password with {@code X_SEED_ADMIN_PASSWORD}):
  * <ul>
  *   <li>username: {@code admin}</li>
  *   <li>password: {@code Admin@123456}</li>
@@ -42,16 +42,16 @@ public class DataInitializer implements CommandLineRunner {
     private final RolePermissionRepository rolePermissionRepository;
     private final StoreMemberRepository storeMemberRepository;
 
-    @Value("${vyntra.seed.admin-username:admin}")
+    @Value("${x.seed.admin-username:admin}")
     private String adminUsername;
 
-    @Value("${vyntra.seed.admin-password:Admin@123456}")
+    @Value("${x.seed.admin-password:Admin@123456}")
     private String adminPassword;
 
-    @Value("${vyntra.seed.admin-full-name:System Administrator}")
+    @Value("${x.seed.admin-full-name:System Administrator}")
     private String adminFullName;
 
-    @Value("${vyntra.seed.admin-email:admin@vyntra.local}")
+    @Value("${x.seed.admin-email:admin@x.local}")
     private String adminEmail;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -61,7 +61,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         if (!StringUtils.hasText(adminPassword)) {
             throw new IllegalStateException(
-                    "vyntra.seed.admin-password / VYNTRA_SEED_ADMIN_PASSWORD must not be empty when local-seed is active");
+                    "x.seed.admin-password / X_SEED_ADMIN_PASSWORD must not be empty when local-seed is active");
         }
 
         // 1. Permissions used by BFF (@PreAuthorize → PERMISSION_ + code)

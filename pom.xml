@@ -11,8 +11,8 @@
 	<groupId>com.x</groupId>
 	<artifactId>x-user-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<name>x-user-service</name>
+<description/>
 	<url/>
 	<licenses>
 		<license/>
