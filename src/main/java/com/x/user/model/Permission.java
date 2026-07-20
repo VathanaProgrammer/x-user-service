@@ -1,4 +1,4 @@
-package com.VyntraUserService.UserService.model;
+package com.x.user.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

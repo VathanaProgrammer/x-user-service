@@ -1,10 +1,10 @@
-package com.VyntraUserService.UserService;
+package com.x.user;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class UserServiceApplicationTests {
+class XXUserServiceApplicationTests {
 
 	@Test
 	void contextLoads() {

@@ -1,4 +1,4 @@
-package com.VyntraUserService.UserService.dto;
+package com.x.user.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

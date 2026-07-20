@@ -1,6 +1,6 @@
-package com.VyntraUserService.UserService.repository;
+package com.x.user.repository;
 
-import com.VyntraUserService.UserService.model.Permission;
+import com.x.user.model.Permission;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 

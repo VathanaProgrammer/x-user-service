@@ -3,6 +3,16 @@ server:
 
 spring:
   application:
-    name: UserService
+    name: X-User-Service
   profiles:
-    default: local
+    # local-seed creates admin / Admin@123456 on empty DB
+    default: local,local-seed
+
+# Used only when Spring profile "local-seed" is active (local development (profile local-seed)).
+# Override password in deploy with VYNTRA_SEED_ADMIN_PASSWORD.
+vyntra:
+  seed:
+    admin-username: ${VYNTRA_SEED_ADMIN_USERNAME:admin}
+    admin-password: ${VYNTRA_SEED_ADMIN_PASSWORD:Admin@123456}
+    admin-full-name: ${VYNTRA_SEED_ADMIN_FULL_NAME:System Administrator}
+    admin-email: ${VYNTRA_SEED_ADMIN_EMAIL:admin@vyntra.local}

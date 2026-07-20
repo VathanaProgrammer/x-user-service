@@ -1,4 +1,4 @@
-package com.VyntraUserService.UserService.model;
+package com.x.user.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -10,31 +10,27 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "roles")
+@Table(name = "store_members")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Role {
+public class StoreMember {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "business_id")
-    private Long businessId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 
-    @Column(name = "role_code")
-    private String roleCode;
+    @Column(name = "store_id")
+    private Long storeId;
 
-    @Column(name = "role_name")
-    private String roleName;
-
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
-    @Column(name = "is_system")
-    private Boolean isSystem;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role_id")
+    private Role role;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
