@@ -13,12 +13,23 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Local-only seed for a default admin user, roles, and permissions.
  * Active only with Spring profile {@code local-seed} (used by local).
+ *
+ * <p>RBAC permission codes follow {@code x-{service}:{action}}:
+ * <ul>
+ *   <li>Standard: {@code read}, {@code create}, {@code update}, {@code delete}</li>
+ *   <li>Extras: e.g. {@code stock-in}, {@code stock-out}, {@code refund}, {@code cancel},
+ *       {@code capture}, {@code upload}</li>
+ * </ul>
  *
  * <p>Default login (override password with {@code X_SEED_ADMIN_PASSWORD}):
  * <ul>
@@ -35,6 +46,24 @@ public class DataInitializer implements CommandLineRunner {
 
     private static final long DEFAULT_BUSINESS_ID = 1L;
     private static final long DEFAULT_STORE_ID = 101L;
+
+    /** Standard CRUD actions for every service. */
+    private static final List<String> CRUD = List.of("read", "create", "update", "delete");
+
+    /**
+     * Service → actions. Every service gets CRUD; some add domain-specific actions.
+     */
+    private static final Map<String, List<String>> SERVICE_ACTIONS = Map.of(
+            "user", CRUD,
+            "business", CRUD,
+            "shop", CRUD,
+            "product", CRUD,
+            "inventory", concat(CRUD, "stock-in", "stock-out"),
+            "order", concat(CRUD, "refund", "cancel"),
+            "storage", concat(CRUD, "upload"),
+            "payment", concat(CRUD, "capture", "refund"),
+            "bff", List.of("read")
+    );
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -64,12 +93,18 @@ public class DataInitializer implements CommandLineRunner {
                     "x.seed.admin-password / X_SEED_ADMIN_PASSWORD must not be empty when local-seed is active");
         }
 
-        // 1. Permissions used by BFF (@PreAuthorize → PERMISSION_ + code)
-        Permission viewProducts = ensurePermission("VIEW_PRODUCTS", "View Products", "PRODUCT");
-        Permission createProduct = ensurePermission("PRODUCT_CREATE", "Create Product", "PRODUCT");
-        Permission manageOrders = ensurePermission("MANAGE_ORDERS", "Manage Orders", "ORDER");
-        Permission manageStock = ensurePermission("MANAGE_STOCK", "Manage Stock", "STOCK");
-        Permission orderRefund = ensurePermission("ORDER_REFUND", "Refund Order", "ORDER");
+        // 1. Permissions: x-{service}:{action}
+        Map<String, Permission> byCode = new LinkedHashMap<>();
+        for (Map.Entry<String, List<String>> entry : SERVICE_ACTIONS.entrySet()) {
+            String service = entry.getKey();
+            for (String action : entry.getValue()) {
+                String code = code(service, action);
+                byCode.put(code, ensurePermission(
+                        code,
+                        capitalize(service) + " " + action,
+                        service.toUpperCase()));
+            }
+        }
 
         // 2. Roles
         Role ownerRole = ensureRole("OWNER", "Business Owner", DEFAULT_BUSINESS_ID);
@@ -77,11 +112,30 @@ public class DataInitializer implements CommandLineRunner {
         Role cashierRole = ensureRole("CASHIER", "Cashier", DEFAULT_BUSINESS_ID);
 
         // 3. Role → permission maps
-        ensureRolePermissions(ownerRole, Arrays.asList(
-                viewProducts, createProduct, manageOrders, manageStock, orderRefund));
-        ensureRolePermissions(managerRole, Arrays.asList(
-                viewProducts, createProduct, manageStock));
-        ensureRolePermissions(cashierRole, Arrays.asList(viewProducts, manageOrders));
+        // OWNER: every permission
+        ensureRolePermissions(ownerRole, new ArrayList<>(byCode.values()));
+
+        // MANAGER: full product/inventory/order/shop/storage; read-only business/user/payment/bff
+        ensureRolePermissions(managerRole, permissions(byCode,
+                allActions("product"),
+                allActions("inventory"),
+                allActions("order"),
+                allActions("shop"),
+                allActions("storage"),
+                List.of("x-business:read"),
+                List.of("x-user:read"),
+                List.of("x-payment:read"),
+                List.of("x-bff:read")));
+
+        // CASHIER: read catalog/shop/business/storage; create+read orders (no refund/cancel)
+        ensureRolePermissions(cashierRole, permissions(byCode,
+                List.of("x-product:read"),
+                List.of("x-inventory:read"),
+                List.of("x-order:read", "x-order:create"),
+                List.of("x-shop:read"),
+                List.of("x-business:read"),
+                List.of("x-storage:read"),
+                List.of("x-bff:read")));
 
         // 4. Default admin user
         User admin = userRepository.findByUsername(adminUsername).orElse(null);
@@ -115,6 +169,43 @@ public class DataInitializer implements CommandLineRunner {
                     .build());
             log.info("Assigned user '{}' to store {} with OWNER role.", adminUsername, DEFAULT_STORE_ID);
         }
+
+        log.info("RBAC seed complete: x-{{service}}:{{action}} — {} permission codes", byCode.size());
+    }
+
+    private static List<String> concat(List<String> base, String... extra) {
+        return Stream.concat(base.stream(), Stream.of(extra)).collect(Collectors.toList());
+    }
+
+    private static String code(String service, String action) {
+        return "x-" + service + ":" + action;
+    }
+
+    private static List<String> allActions(String service) {
+        return SERVICE_ACTIONS.get(service).stream()
+                .map(action -> code(service, action))
+                .collect(Collectors.toList());
+    }
+
+    @SafeVarargs
+    private static List<Permission> permissions(Map<String, Permission> byCode, List<String>... groups) {
+        List<Permission> result = new ArrayList<>();
+        for (List<String> group : groups) {
+            for (String code : group) {
+                Permission p = byCode.get(code);
+                if (p != null) {
+                    result.add(p);
+                }
+            }
+        }
+        return result;
+    }
+
+    private static String capitalize(String value) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+        return Character.toUpperCase(value.charAt(0)) + value.substring(1);
     }
 
     private Permission ensurePermission(String code, String name, String module) {
@@ -123,7 +214,7 @@ public class DataInitializer implements CommandLineRunner {
                         .permissionCode(code)
                         .permissionName(name)
                         .moduleName(module)
-                        .description("Seeded for local development")
+                        .description("Seeded RBAC: " + code)
                         .build()));
     }
 
@@ -140,6 +231,9 @@ public class DataInitializer implements CommandLineRunner {
 
     private void ensureRolePermissions(Role role, List<Permission> permissions) {
         for (Permission permission : permissions) {
+            if (permission == null) {
+                continue;
+            }
             boolean linked = rolePermissionRepository.findByRole(role).stream()
                     .anyMatch(rp -> rp.getPermission() != null
                             && permission.getId().equals(rp.getPermission().getId()));

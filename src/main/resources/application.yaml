@@ -2,6 +2,9 @@ server:
   port: ${USER_SERVICE_PORT:7445}
 
 spring:
+  banner:
+    location: classpath:banner.txt
+    mode: console
   application:
     name: x-user-service
   profiles:
@@ -10,6 +13,14 @@ spring:
 
 # Used only when Spring profile "local-seed" is active.
 x:
+  http:
+    logging:
+      enabled: true
+      server: x-user-service
+      hop: "x-api-gateway → x-bff → x-user-service"
+      hops:
+        /internal/users: "x-api-gateway → x-bff → x-user-service"
+        /api/v1/users: "x-api-gateway → x-bff → x-user-service"
   seed:
     admin-username: ${X_SEED_ADMIN_USERNAME:admin}
     admin-password: ${X_SEED_ADMIN_PASSWORD:Admin@123456}
