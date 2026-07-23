@@ -56,7 +56,7 @@ public class DataInitializer implements CommandLineRunner {
     private static final Map<String, List<String>> SERVICE_ACTIONS = Map.of(
             "user", CRUD,
             "business", CRUD,
-            "shop", CRUD,
+            "store", CRUD,
             "product", CRUD,
             "inventory", concat(CRUD, "stock-in", "stock-out"),
             "order", concat(CRUD, "refund", "cancel"),
@@ -115,24 +115,24 @@ public class DataInitializer implements CommandLineRunner {
         // OWNER: every permission
         ensureRolePermissions(ownerRole, new ArrayList<>(byCode.values()));
 
-        // MANAGER: full product/inventory/order/shop/storage; read-only business/user/payment/bff
+        // MANAGER: full product/inventory/order/store/storage; read-only business/user/payment/bff
         ensureRolePermissions(managerRole, permissions(byCode,
                 allActions("product"),
                 allActions("inventory"),
                 allActions("order"),
-                allActions("shop"),
+                allActions("store"),
                 allActions("storage"),
                 List.of("x-business:read"),
                 List.of("x-user:read"),
                 List.of("x-payment:read"),
                 List.of("x-bff:read")));
 
-        // CASHIER: read catalog/shop/business/storage; create+read orders (no refund/cancel)
+        // CASHIER: read catalog/store/business/storage; create+read orders (no refund/cancel)
         ensureRolePermissions(cashierRole, permissions(byCode,
                 List.of("x-product:read"),
                 List.of("x-inventory:read"),
                 List.of("x-order:read", "x-order:create"),
-                List.of("x-shop:read"),
+                List.of("x-store:read"),
                 List.of("x-business:read"),
                 List.of("x-storage:read"),
                 List.of("x-bff:read")));
